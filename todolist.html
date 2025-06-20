@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Todo List with Material UI</title>
+<!-- Material Icons -->
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+<!-- Material CSS Custom for dark theme -->
+<style>
+  body {
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+    background-color: #121212;
+    color: #fff;
+  }
+
+  /* Header styles */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background-color: #222;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.5em;
+}
+
+.buttons {
+  display: flex;
+  gap: 10px;
+}
+
+/* Buttons styling */
+button {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 24px;
+  outline: none;
+}
+button:hover {
+  color: #1e88e5;
+}
+
+/* Main content styles */
+.content {
+  padding: 10px 20px;
+}
+
+/* Input styles */
+.input-group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.input-group input, select, textarea {
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #555;
+  background-color: #222;
+  color: #fff;
+  flex: 1 1 200px;
+}
+
+/* Tables styles */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  margin-bottom: 20px;
+  max-height: 300px;
+  display: block;
+  overflow-y: auto;
+  border: 1px solid #555;
+  border-radius: 4px;
+}
+
+/* Fixed header */
+thead {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+tbody {
+  display: block;
+  max-height: 250px;
+  overflow-y: auto;
+  width: 100%;
+}
+tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+th, td {
+  padding: 8px;
+  border-bottom: 1px solid #555;
+  text-align: left;
+  word-wrap: break-word;
+}
+
+/* Completed tasks table similar styling */
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Todo List</h1>
+  <div class="buttons">
+    <button id="exportBtn" title="Export Data" class="material-icons">file_upload</button>
+    <button id="importBtn" title="Import Data" class="material-icons">file_download</button>
+    <input type="file" id="importFile" style="display:none" />
+  </div>
+</div>
+
+<div class="content">
+  <!-- Input Form -->
+  <div class="input-group">
+    <input type="text" id="nameInput" placeholder="Name" />
+    <select id="serviceType">
+      <option value="Income Tax">Income Tax</option>
+      <option value="GST">GST</option>
+      <option value="TDS">TDS</option>
+      <option value="Other">Other</option>
+    </select>
+    <textarea id="descInput" placeholder="Description (for Other service)" style="display:none"></textarea>
+    <button id="addBtn" title="Add Item" class="material-icons">add_circle</button>
+  </div>
+
+  <!-- Pending Tasks Table -->
+  <h2>Pending Tasks</h2>
+  <table id="pendingTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Service Type</th>
+        <th>Description</th>
+        <th>Remarks</th>
+        <th>Created Time</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <!-- Completed Tasks Table -->
+  <h2>Completed Tasks</h2>
+  <table id="completedTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Service Type</th>
+        <th>Description</th>
+        <th>Remarks</th>
+        <th>Completed Time</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Modal for editing remarks -->
+<div id="editModal" style="display:none; position:fixed; top:50%; left:50%; transform: translate(-50%, -50%);
+ background:#222; padding:20px; border-radius:8px; z-index:2000; width:300px;">
+  <h3>Edit Remarks</h3>
+  <textarea id="remarksInput" style="width:100%; height:80px; background:#333; color:#fff; border:none; padding:8px;"></textarea>
+  <div style="margin-top:10px; display:flex; justify-content:flex-end; gap:10px;">
+    <button id="saveRemarks" class="material-icons" style="background:none; border:none; color:#1e88e5; cursor:pointer;">check</button>
+    <button id="cancelEdit" class="material-icons" style="background:none; border:none; color:#e53935; cursor:pointer;">close</button>
+  </div>
+</div>
+
+<script>
+  const pendingTbody = document.querySelector('#pendingTable tbody');
+  const completedTbody = document.querySelector('#completedTable tbody');
+
+  const nameInput = document.getElementById('nameInput');
+  const serviceTypeSelect = document.getElementById('serviceType');
+  const descInput = document.getElementById('descInput');
+  const addBtn = document.getElementById('addBtn');
+
+  const exportBtn = document.getElementById('exportBtn');
+  const importBtn = document.getElementById('importBtn');
+  const importFile = document.getElementById('importFile');
+
+  let todos = { pending: [], completed: [] };
+  let editRemarksId = null;
+
+  // Load from localStorage
+  function loadData() {
+    const data = localStorage.getItem('todoData');
+    if(data) {
+      todos = JSON.parse(data);
+      // sort pending by time
+      todos.pending.sort((a,b) => new Date(a.time) - new Date(b.time));
+      // sort completed by latest time
+      todos.completed.sort((a,b) => new Date(b.time) - new Date(a.time));
+    }
+  }
+
+  // Save to localStorage
+  function saveData() {
+    localStorage.setItem('todoData', JSON.stringify(todos));
+  }
+
+  // Render functions
+  function render() {
+    // Clear tables
+    pendingTbody.innerHTML = '';
+    completedTbody.innerHTML = '';
+
+    // Pending tasks sorted by time ascending
+    todos.pending.sort((a,b) => new Date(a.time) - new Date(b.time));
+    todos.pending.forEach(task => addTaskRow(task, false));
+
+    // Completed tasks sorted by latest time
+    todos.completed.sort((a,b) => new Date(b.time) - new Date(a.time));
+    todos.completed.forEach(task => addTaskRow(task, true));
+  }
+
+  function addTaskRow(task, isCompleted) {
+    const tbodyRef = isCompleted ? completedTbody : pendingTbody;
+    const tr = document.createElement('tr');
+
+    // Name
+    const nameTd = document.createElement('td');
+    nameTd.textContent = task.name;
+    tr.appendChild(nameTd);
+
+    // Service Type
+    const serviceTd = document.createElement('td');
+    serviceTd.textContent = task.serviceType;
+    tr.appendChild(serviceTd);
+
+    // Description
+    const descTd = document.createElement('td');
+    descTd.textContent = task.description || '-';
+    tr.appendChild(descTd);
+
+    // Remarks or empty
+    const remarksTd = document.createElement('td');
+    remarksTd.textContent = task.remarks || '-';
+    tr.appendChild(remarksTd);
+
+    // Time
+    const timeTd = document.createElement('td');
+    timeTd.textContent = new Date(task.time).toLocaleString();
+    tr.appendChild(timeTd);
+
+    // Actions
+    const actionsTd = document.createElement('td');
+
+    if(!isCompleted) {
+      // Complete button
+      const completeBtn = document.createElement('button');
+      completeBtn.title = 'Mark as Completed';
+      completeBtn.className = 'material-icons';
+      completeBtn.innerHTML = 'check_circle';
+      completeBtn.onclick = () => completeTask(task.id);
+      actionsTd.appendChild(completeBtn);
+
+      // Edit remarks button
+      const editBtn = document.createElement('button');
+      editBtn.title = 'Edit Remarks';
+      editBtn.className = 'material-icons';
+      editBtn.innerHTML = 'edit';
+      editBtn.onclick = () => openEditModal(task.id);
+      actionsTd.appendChild(editBtn);
+
+      // Remove button
+      const removeBtn = document.createElement('button');
+      removeBtn.title = 'Remove';
+      removeBtn.className = 'material-icons';
+      removeBtn.innerHTML = 'delete';
+      removeBtn.onclick = () => removeTask(task.id);
+      actionsTd.appendChild(removeBtn);
+    } else {
+      // For completed, only remove
+      const removeBtn = document.createElement('button');
+      removeBtn.title = 'Remove';
+      removeBtn.className = 'material-icons';
+      removeBtn.innerHTML = 'delete';
+      removeBtn.onclick = () => removeTask(task.id);
+      actionsTd.appendChild(removeBtn);
+    }
+
+    tr.appendChild(actionsTd);
+    tbodyRef.appendChild(tr);
+  }
+
+  // Generate unique ID
+  function generateId() {
+    return Date.now() + Math.random().toString(36).substr(2, 5);
+  }
+
+  // Add task
+  addBtn.onclick = () => {
+    const name = nameInput.value.trim();
+    const serviceType = serviceTypeSelect.value;
+    let description = '';
+    if(serviceType === 'Other') {
+      description = descInput.value.trim();
+      if(!description) {
+        alert('Please enter description for Other service.');
+        return;
+      }
+    }
+    if(!name) {
+      alert('Enter name.');
+      return;
+    }
+    const id = generateId();
+    const time = new Date().toISOString();
+
+    const task = {
+      id,
+      name,
+      serviceType,
+      description,
+      remarks: '',
+      time,
+    };
+    todos.pending.push(task);
+    saveData();
+    render();
+    // Clear inputs
+    nameInput.value = '';
+    descInput.value = '';
+  };
+
+  // Show/hide description input based on service type
+  serviceTypeSelect.onchange = () => {
+    if(serviceTypeSelect.value === 'Other') {
+      descInput.style.display = 'block';
+    } else {
+      descInput.style.display = 'none';
+      descInput.value = '';
+    }
+  };
+
+  // Complete task
+  function completeTask(id) {
+    const index = todos.pending.findIndex(t => t.id === id);
+    if(index > -1) {
+      const task = todos.pending.splice(index,1)[0];
+      task.completedTime = new Date().toISOString();
+      todos.completed.push(task);
+      saveData();
+      render();
+    }
+  }
+
+  // Remove task
+  function removeTask(id) {
+    let index = todos.pending.findIndex(t => t.id === id);
+    if(index > -1) {
+      todos.pending.splice(index,1);
+    } else {
+      index = todos.completed.findIndex(t => t.id === id);
+      if(index > -1) {
+        todos.completed.splice(index,1);
+      }
+    }
+    saveData();
+    render();
+  }
+
+  // Open edit modal for remarks
+  function openEditModal(id) {
+    editRemarksId = id;
+    const task = todos.pending.find(t => t.id === id);
+    if(!task) return;
+    document.getElementById('remarksInput').value = task.remarks || '';
+    document.getElementById('editModal').style.display = 'block';
+  }
+
+  // Save remarks
+  document.getElementById('saveRemarks').onclick = () => {
+    const remarks = document.getElementById('remarksInput').value.trim();
+    const task = todos.pending.find(t => t.id === editRemarksId);
+    if(task) {
+      task.remarks = remarks;
+      saveData();
+      render();
+    }
+    document.getElementById('editModal').style.display = 'none';
+  };
+
+  // Cancel edit
+  document.getElementById('cancelEdit').onclick = () => {
+    document.getElementById('editModal').style.display = 'none';
+  };
+
+  // Export data
+  document.getElementById('exportBtn').onclick = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(todos));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "todo_data.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  // Import data
+  document.getElementById('importBtn').onclick = () => {
+    document.getElementById('importFile').click();
+  };
+  document.getElementById('importFile').onchange = () => {
+    const file = document.getElementById('importFile').files[0];
+    if(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          if(data && data.pending && data.completed) {
+            todos = data;
+            saveData();
+            render();
+            alert('Data imported successfully.');
+          } else {
+            alert('Invalid data format.');
+          }
+        } catch(e) {
+          alert('Error parsing file.');
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  // Initial load
+  loadData();
+  render();
+
+</script>
+</body>
+</html>
