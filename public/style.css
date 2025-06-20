@@ -1,0 +1,103 @@
+
+  body {
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+    background-color: #121212;
+    color: #fff;
+  }
+
+  /* Header styles */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background-color: #222;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.5em;
+}
+
+.buttons {
+  display: flex;
+  gap: 10px;
+}
+
+/* Buttons styling */
+button {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 24px;
+  outline: none;
+}
+button:hover {
+  color: #1e88e5;
+}
+
+/* Main content styles */
+.content {
+  padding: 10px 20px;
+}
+
+/* Input styles */
+.input-group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.input-group input, select, textarea {
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #555;
+  background-color: #222;
+  color: #fff;
+  flex: 1 1 200px;
+}
+
+/* Tables styles */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  margin-bottom: 20px;
+  max-height: 300px;
+  display: block;
+  overflow-y: auto;
+  border: 1px solid #555;
+  border-radius: 4px;
+}
+
+/* Fixed header */
+thead {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+tbody {
+  display: block;
+  max-height: 250px;
+  overflow-y: auto;
+  width: 100%;
+}
+tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+th, td {
+  padding: 8px;
+  border-bottom: 1px solid #555;
+  text-align: left;
+  word-wrap: break-word;
+}
+
+/* Completed tasks table similar styling */
